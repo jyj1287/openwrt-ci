@@ -45,13 +45,19 @@ assert changed, 'Expected ART partition name references missing'
 kernel = root / 'target/linux/qualcommax/config-6.12'
 options = {
     'CONFIG_CMA': 'y', 'CONFIG_DMA_CMA': 'y', 'CONFIG_CMA_SIZE_MBYTES': '8',
-    'CONFIG_CMA_SIZE_SEL_MBYTES': 'y',
+    'CONFIG_CMA_SIZE_SEL_MBYTES': 'y', 'CONFIG_CMA_SIZE_PERCENTAGE': '0',
+    'CONFIG_CMA_SIZE_SEL_PERCENTAGE': None, 'CONFIG_CMA_SIZE_SEL_MIN': None,
+    'CONFIG_CMA_SIZE_SEL_MAX': None, 'CONFIG_CMA_ALIGNMENT': '8',
+    'CONFIG_CMA_AREAS': '8', 'CONFIG_CMA_DEBUGFS': None,
+    'CONFIG_CMA_SYSFS': 'y', 'CONFIG_DMA_NUMA_CMA': None,
 }
 lines = kernel.read_text().splitlines()
 lines = [line for line in lines if not any(
     line.startswith(key + '=') or line == '# ' + key + ' is not set'
     for key in options)]
-kernel.write_text('\n'.join(lines + [key + '=' + value for key, value in options.items()]) + '\n')
+settings = [key + '=' + value if value is not None else '# ' + key + ' is not set'
+            for key, value in options.items()]
+kernel.write_text('\n'.join(lines + settings) + '\n')
 
 image = root / 'target/linux/qualcommax/image/ipq60xx.mk'
 text = image.read_text()
