@@ -2,6 +2,9 @@ name: RM1800-256-EXPERIMENTAL
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/RM1800-256-EXPERIMENTAL.yml'
 
 permissions:
   contents: read
@@ -45,10 +48,17 @@ jobs:
       - name: Install feeds and configure
         working-directory: openwrt
         run: |
+          set -o pipefail
+          mkdir -p ../build-report
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+          # Unused upstream LuCI chat package has a Kconfig dependency cycle.
+          if [ -L package/feeds/luci/luci-app-weechat ]; then
+            rm package/feeds/luci/luci-app-weechat
+          fi
           cp ../configs/rm1800-256-experimental.config .config
-          make defconfig
+          make defconfig 2>&1 | tee ../build-report/defconfig.log
+          ! grep -q 'recursive dependency detected' ../build-report/defconfig.log
           grep -qx CONFIG_TARGET_qualcommax_ipq60xx_DEVICE_xiaomi_ax1800=y .config
           grep -qx CONFIG_ATH11K_MEM_PROFILE_256M=y .config
           ! grep -qx CONFIG_ATH11K_MEM_PROFILE_512M=y .config
@@ -72,7 +82,7 @@ jobs:
           configs = list(pathlib.Path('openwrt/build_dir').glob('target-*/linux-qualcommax_ipq60xx/linux-6.12*/.config'))
           assert len(configs) == 1, 'Cannot uniquely locate target kernel config'
           config = configs[0].read_text().splitlines()
-          for required in ('CONFIG_CMA=y', 'CONFIG_DMA_CMA=y', 'CONFIG_CMA_SIZE_MBYTES=8'):
+          for required in ('CONFIG_CMA=y', 'CONFIG_DMA_CMA=y', 'CONFIG_CMA_SIZE_MBYTES=8', 'CONFIG_CMA_AREAS=8', '# CONFIG_CMA_DEBUGFS is not set'):
               assert required in config, 'Kernel rejected requested DMA pool option: '+required
           out = pathlib.Path('build-report/firmware')
           out.mkdir()
