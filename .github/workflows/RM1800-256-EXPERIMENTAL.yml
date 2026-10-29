@@ -2,6 +2,9 @@ name: RM1800-256-EXPERIMENTAL
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/RM1800-256-EXPERIMENTAL.yml'
 
 permissions:
   contents: read
